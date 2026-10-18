@@ -18,7 +18,15 @@ import { cn } from "@/lib/utils"
 
 type Interaction =
   | { kind: "draw"; start: Point; origin: Annotation[]; draft: Annotation }
-  | { kind: "move"; id: string; start: Point; origin: Annotation[]; original: Annotation }
+  | {
+      kind: "move"
+      id: string
+      start: Point
+      origin: Annotation[]
+      original: Annotation
+      moved: boolean
+      editOnClick: boolean
+    }
   | {
       kind: "resize"
       id: string
@@ -155,15 +163,20 @@ export function Stage({
     }
     const original = annotations.find((a) => a.id === id)
     if (!original) return
-    if (tool === "text" && original.type === "text") {
-      e.preventDefault()
-      startEditing(id, false)
-      return
-    }
+    const editOnClick = tool === "text" && original.type === "text"
+    if (editOnClick) e.preventDefault()
     onSelect(id)
     capture(e)
     history.begin()
-    interaction.current = { kind: "move", id, start: toImage(e), origin: annotations, original }
+    interaction.current = {
+      kind: "move",
+      id,
+      start: toImage(e),
+      origin: annotations,
+      original,
+      moved: false,
+      editOnClick,
+    }
   }
 
   const handleCornerDown = (e: PointerEvent<SVGElement>, corner: Corner) => {
@@ -202,6 +215,10 @@ export function Stage({
         break
       }
       case "move": {
+        if (!current.moved && Math.hypot(p.x - current.start.x, p.y - current.start.y) * scale < 3) {
+          break
+        }
+        current.moved = true
         const moved = translate(current.original, p.x - current.start.x, p.y - current.start.y)
         history.preview(updateIn(current.origin, current.id, () => moved))
         break
@@ -234,6 +251,9 @@ export function Stage({
       return
     }
     history.end()
+    if (current.kind === "move" && current.editOnClick && !current.moved) {
+      startEditing(current.id, false)
+    }
   }
 
   const selected = annotations.find((a) => a.id === selectedId)
