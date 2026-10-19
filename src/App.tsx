@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ImageDown } from "lucide-react"
 import { toast } from "sonner"
 
@@ -41,6 +41,9 @@ import type {
   Tool,
 } from "@/editor/types"
 import { useEditorInput } from "@/hooks/use-editor-input"
+import { useHashRoute } from "@/hooks/use-hash-route"
+import { cn } from "@/lib/utils"
+import { AboutPage } from "@/components/about/about-page"
 import { useHistory } from "@/hooks/use-history"
 
 const MOD_KEY = /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl"
@@ -193,8 +196,14 @@ export function App() {
     if (next !== annotations) history.set(next)
   }
 
+  const showAbout = useHashRoute() === "#about"
+
+  useEffect(() => {
+    document.title = showAbout ? "About — Markly" : "Markly — private screenshot annotation"
+  }, [showAbout])
+
   useEditorInput({
-    enabled: pendingFile === null,
+    enabled: pendingFile === null && !showAbout,
     hasImage: image !== null,
     onImage: requestImage,
     onPasteWithoutImage: () => toast.info("There's no image on your clipboard to paste."),
@@ -219,7 +228,13 @@ export function App() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
+      {showAbout && <AboutPage />}
+      <div
+        className={cn(
+          "flex h-svh flex-col overflow-hidden bg-background text-foreground",
+          showAbout && "hidden",
+        )}
+      >
         <EditorHeader
           hasImage={image !== null}
           canUndo={history.canUndo}
@@ -336,8 +351,8 @@ export function App() {
           </AlertDialogContent>
         </AlertDialog>
 
-        <Toaster theme={theme} position="bottom-center" />
       </div>
+      <Toaster theme={theme} position="bottom-center" />
     </TooltipProvider>
   )
 }
